@@ -4,6 +4,7 @@ using Mastonet;
 using Mastonet.Entities;
 
 using System.Net;
+using System.Text.RegularExpressions;
 
 namespace AltGen
 {
@@ -35,6 +36,15 @@ namespace AltGen
             }
 
             return sinceId;
+        }
+
+        private string StripHtml( string content)
+        {
+            content = content.Replace("</p>", " \n\n");
+            content = content.Replace("<br />", " \n");
+            content = Regex.Replace(content, "<[a-zA-Z/].*?>", String.Empty);
+            content = System.Net.WebUtility.HtmlDecode(content);
+            return content;
         }
 
         private async Task FixAltTags(MastodonClient client, Status status)
@@ -70,7 +80,9 @@ namespace AltGen
 
             if (hasChanges)
             {
-                await client.EditStatus(status.Id, status.Content.Replace("<p>", "").Replace("</p>", ""), mediaIds: newAttachments.Select(q => q.Id));
+                var content = StripHtml(status.Content);
+                
+                await client.EditStatus(status.Id, content, mediaIds: newAttachments.Select(q => q.Id));
             }
         }
     }

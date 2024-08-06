@@ -27,7 +27,7 @@ namespace AltGen
                         MessageContent.ImageUrlContent(filePath)
                     })
                 },
-                Model = Models.Gpt_4o,
+                Model = Models.Gpt_4o_mini,
                 Temperature = 0.2f,
                 MaxTokens = 400
             });
@@ -39,7 +39,7 @@ namespace AltGen
                 Console.WriteLine($"{cost}:{content}");
                 return content;
             }
-            Console.WriteLine($"Could not receive description: '{descriptionResult.Error}'");
+            Console.WriteLine($"Could not receive description: '{descriptionResult.Error.Message}'");
             return null;
         }
 
