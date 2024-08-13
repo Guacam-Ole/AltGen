@@ -38,13 +38,23 @@ namespace AltGen
             return sinceId;
         }
 
-        private string StripHtml( string content)
+        private static string StripHtml(string content)
         {
             content = content.Replace("</p>", " \n\n");
             content = content.Replace("<br />", " \n");
             content = Regex.Replace(content, "<[a-zA-Z/].*?>", String.Empty);
-            content = System.Net.WebUtility.HtmlDecode(content);
+            content = WebUtility.HtmlDecode(content);
             return content;
+        }
+
+        private static string FixMentions(Status status)
+        {
+            foreach (var mention in status.Mentions)
+            {
+                if (mention.UserName == mention.AccountName) continue; // Same Instance. Nothing to do
+                status.Content = status.Content.Replace($"@{mention.UserName}", $"@{mention.AccountName}");
+            }
+            return status.Content;
         }
 
         private async Task FixAltTags(MastodonClient client, Status status)
@@ -80,8 +90,9 @@ namespace AltGen
 
             if (hasChanges)
             {
-                var content = StripHtml(status.Content);
-                
+                status.Content = StripHtml(status.Content);
+                var content = FixMentions(status);
+
                 await client.EditStatus(status.Id, content, mediaIds: newAttachments.Select(q => q.Id));
             }
         }
