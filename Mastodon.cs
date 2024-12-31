@@ -61,7 +61,7 @@ namespace AltGen
         {
             bool hasChanges = false;
             var aiGen = new OpenAIAltGen(_secrets.OpenAiKey);
-            if (!status.MediaAttachments.All(q => q.Url.EndsWith(".jpg") || q.Url.EndsWith(".png")))
+            if (!status.MediaAttachments.All(q => q.Url.EndsWith(".jpg") || q.Url.EndsWith(".png") || q.Url.EndsWith(".jpeg")))
             {
                 Console.WriteLine("Sorry. Unexpected image type. Can only work with jpg and png");
                 return;
