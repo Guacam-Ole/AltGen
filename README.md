@@ -3,4 +3,4 @@ This is a small utility that automatically adds ALT-Tags to your Mastodon-Posts 
 
 # Configuration
 
-copy secrets.example.json to secrets.json and enter your secrets. Then start the program
+copy `secrets.example.json` to `secrets.json` and enter your secrets. Then start the program
