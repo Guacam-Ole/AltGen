@@ -1,8 +1,6 @@
 ﻿using AltGen.Config;
-
 using Mastonet;
 using Mastonet.Entities;
-
 using System.Net;
 using System.Text.RegularExpressions;
 
@@ -24,18 +22,28 @@ namespace AltGen
 
         public async Task<string?> GetNewPosts(string? sinceId)
         {
-            var client = Login(_secrets.Mastodon.Instance, _secrets.Mastodon.AccessToken);
-            var whoami = await client.GetCurrentUser();
-            var newStatuses = await client.GetAccountStatuses(whoami.Id, new ArrayOptions { SinceId = sinceId, Limit = 10 }, true);
-            foreach (var status in newStatuses.OrderBy(q => q.CreatedAt))
+            try
             {
-                sinceId = status.Id;
-                var missingAltTags = status.MediaAttachments.Where(q => string.IsNullOrWhiteSpace(q.Description));
-                if (!missingAltTags.Any()) continue;
-                await FixAltTags(client, status);
-            }
+                var client = Login(_secrets.Mastodon.Instance, _secrets.Mastodon.AccessToken);
+                var whoami = await client.GetCurrentUser();
+                var newStatuses = await client.GetAccountStatuses(whoami.Id, new ArrayOptions { SinceId = sinceId, Limit = 10 }, true);
+                foreach (var status in newStatuses.OrderBy(q => q.CreatedAt))
+                {
+                    sinceId = status.Id;
+                    var missingAltTags = status.MediaAttachments.Where(q => string.IsNullOrWhiteSpace(q.Description));
+                    if (!missingAltTags.Any()) continue;
+                    await Console.Out.WriteLineAsync($"Received Status without ALT. try to add ALT-Tag.Contents: \n{status.Content}");
+                    await FixAltTags(client, status);
+                }
 
-            return sinceId;
+                return sinceId;
+            }
+            catch (Exception e)
+            {
+                Console.WriteLine(e);
+                Console.WriteLine("will try again later");
+                throw;
+            }
         }
 
         private static string StripHtml(string content)
@@ -54,6 +62,7 @@ namespace AltGen
                 if (mention.UserName == mention.AccountName) continue; // Same Instance. Nothing to do
                 status.Content = status.Content.Replace($"@{mention.UserName}", $"@{mention.AccountName}");
             }
+
             return status.Content;
         }
 
@@ -61,7 +70,7 @@ namespace AltGen
         {
             bool hasChanges = false;
             var aiGen = new OpenAIAltGen(_secrets.OpenAiKey);
-            if (!status.MediaAttachments.All(q => q.Url.EndsWith(".jpg") || q.Url.EndsWith(".png")))
+            if (!status.MediaAttachments.All(q => q.Url.EndsWith(".jpg") || q.Url.EndsWith(".jpeg") || q.Url.EndsWith(".png")))
             {
                 Console.WriteLine("Sorry. Unexpected image type. Can only work with jpg and png");
                 return;
@@ -85,6 +94,7 @@ namespace AltGen
                     using var stream = new MemoryStream(content);
                     newAttachments.Add(await client.UploadMedia(stream, description: imageDescription));
                 }
+
                 hasChanges = true;
             }
 
