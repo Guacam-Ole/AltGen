@@ -68,19 +68,27 @@ namespace AltGen
 
         private async Task FixAltTags(MastodonClient client, Status status)
         {
+            string[] supportedExtensions = [".jpeg", ".jpg", ".png", ".ping"];
             bool hasChanges = false;
             var aiGen = new OpenAIAltGen(_secrets.OpenAiKey);
-            if (!status.MediaAttachments.All(q => q.Url.EndsWith(".gif") || q.Url.EndsWith(".jpg") || q.Url.EndsWith(".jpeg") ||q.Url.EndsWith(".mp4")|| q.Url.EndsWith(".png")))
-            {
-                Console.WriteLine($"Sorry. Unexpected image type '{ (string.Join(',',status.MediaAttachments.Select(q=>q.Url)))}'. Can only work with jpg, png and gif");
-                return;
-            }
+            // if (!status.MediaAttachments.All(q => q.Url.EndsWith(".gif") || q.Url.EndsWith(".jpg") || q.Url.EndsWith(".jpeg") ||q.Url.EndsWith(".mp4")|| q.Url.EndsWith(".png")))
+            // {
+            //     Console.WriteLine($"Sorry. Unexpected image type '{ (string.Join(',',status.MediaAttachments.Select(q=>q.Url)))}'. Can only work with jpg, png and gif");
+            //     return;
+            // }
 
             var newAttachments = new List<Attachment>();
             foreach (var attachment in status.MediaAttachments)
             {
                 var imageDescription = attachment.Description;
-                if (string.IsNullOrWhiteSpace(imageDescription)) imageDescription = await aiGen.GetImageDescription(attachment.Url);
+                string imageFile = attachment.Url;
+                if (!supportedExtensions.Any(q => attachment.Url.EndsWith(q)))
+                {
+                    Console.WriteLine($"'{attachment.Url}' does not end with an expected imagetype. Will try with preview Image instead");
+                    imageFile = attachment.PreviewUrl;
+                }
+         
+                if (string.IsNullOrWhiteSpace(imageDescription)) imageDescription = await aiGen.GetImageDescription(imageFile);
                 if (imageDescription == null)
                 {
                     Console.WriteLine("Sorry. Cannot create description");

@@ -16,6 +16,10 @@ namespace AltGen
 
         public async Task<string?> GetImageDescription(string filePath)
         {
+            if (filePath.EndsWith(".mp4"))
+            {
+                
+            }
             var service = Login();
             var descriptionResult = await service.ChatCompletion.CreateCompletion(new ChatCompletionCreateRequest
             {
