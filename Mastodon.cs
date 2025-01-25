@@ -70,9 +70,9 @@ namespace AltGen
         {
             bool hasChanges = false;
             var aiGen = new OpenAIAltGen(_secrets.OpenAiKey);
-            if (!status.MediaAttachments.All(q => q.Url.EndsWith(".jpg") || q.Url.EndsWith(".jpeg") || q.Url.EndsWith(".png")))
+            if (!status.MediaAttachments.All(q => q.Url.EndsWith(".gif") || q.Url.EndsWith(".jpg") || q.Url.EndsWith(".jpeg") || q.Url.EndsWith(".png")))
             {
-                Console.WriteLine("Sorry. Unexpected image type. Can only work with jpg and png");
+                Console.WriteLine("Sorry. Unexpected image type. Can only work with jpg, png and gif");
                 return;
             }
 
