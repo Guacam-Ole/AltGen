@@ -28,7 +28,7 @@ internal class Program
                     return;
                 }
             }
-            Thread.Sleep(10000 * errorCount);
+            Thread.Sleep(1000 * 60 * errorCount);
         }
     }
 }
