@@ -71,11 +71,6 @@ namespace AltGen
             string[] supportedExtensions = [".jpeg", ".jpg", ".png", ".ping"];
             bool hasChanges = false;
             var aiGen = new OpenAIAltGen(_secrets.OpenAiKey);
-            // if (!status.MediaAttachments.All(q => q.Url.EndsWith(".gif") || q.Url.EndsWith(".jpg") || q.Url.EndsWith(".jpeg") ||q.Url.EndsWith(".mp4")|| q.Url.EndsWith(".png")))
-            // {
-            //     Console.WriteLine($"Sorry. Unexpected image type '{ (string.Join(',',status.MediaAttachments.Select(q=>q.Url)))}'. Can only work with jpg, png and gif");
-            //     return;
-            // }
 
             var newAttachments = new List<Attachment>();
             foreach (var attachment in status.MediaAttachments)
@@ -101,8 +96,8 @@ namespace AltGen
 
                     using var stream = new MemoryStream(content);
                     newAttachments.Add(await client.UploadMedia(stream, description: imageDescription));
+                    Thread.Sleep(TimeSpan.FromSeconds(10));
                 }
-
                 hasChanges = true;
             }
 
