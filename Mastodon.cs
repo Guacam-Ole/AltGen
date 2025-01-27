@@ -41,13 +41,10 @@ namespace AltGen
             }
             catch (Exception e)
             {
-                if (e.ToString().Contains("Too many requests"))
-                {
-                    Console.WriteLine("Too many requests. will wait 10 minutes ");
-                    Thread.Sleep(TimeSpan.FromMinutes(10));
-                }
+               
                 Console.WriteLine(e);
                 Console.WriteLine("will try again later");
+               
                 throw;
             }
         }

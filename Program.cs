@@ -4,7 +4,9 @@ internal class Program
 {
     private static void Main(string[] args)
     {
-        var config = Newtonsoft.Json.JsonConvert.DeserializeObject<AltGen.Config.Secrets>(File.ReadAllText("secrets.json")) ?? throw new Exception("Cannot read config");
+        var config =
+            Newtonsoft.Json.JsonConvert.DeserializeObject<AltGen.Config.Secrets>(File.ReadAllText("secrets.json")) ??
+            throw new Exception("Cannot read config");
 
         string? lastCheckedId = null;
         var mastodon = new Mastodon(config);
@@ -22,13 +24,20 @@ internal class Program
                 errorCount++;
                 Console.WriteLine(ex);
                 Console.WriteLine($"ErrorCount: {errorCount}");
-                if (errorCount >= 5)
+                if (ex.ToString().Contains("Too many requests"))
                 {
-                    Console.WriteLine("Giving up");
-                    return;
+                    Console.WriteLine($"Too many requests. will wait{10 * errorCount} minutes ");
+                    Thread.Sleep(TimeSpan.FromMinutes(10 * errorCount));
                 }
+                else
+                {
+                    Thread.Sleep(1000 * 60 * errorCount);
+                }
+
+                if (errorCount < 5) continue;
+                Console.WriteLine("Giving up");
+                return;
             }
-            Thread.Sleep(1000 * 60 * errorCount);
         }
     }
 }
