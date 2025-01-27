@@ -18,6 +18,7 @@ internal class Program
             {
                 lastCheckedId = mastodon.GetNewPosts(lastCheckedId).Result;
                 errorCount = 0;
+                Thread.Sleep(TimeSpan.FromSeconds(10));
             }
             catch (Exception ex)
             {
@@ -31,7 +32,7 @@ internal class Program
                 }
                 else
                 {
-                    Thread.Sleep(1000 * 60 * errorCount);
+                    Thread.Sleep(TimeSpan.FromMinutes(1) * errorCount);
                 }
 
                 if (errorCount < 5) continue;
