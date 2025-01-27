@@ -8,7 +8,7 @@ internal class Program
 
         string? lastCheckedId = null;
         var mastodon = new Mastodon(config);
-        int errorCount = 0;
+        var errorCount = 0;
         Console.WriteLine("Application Started");
         while (true)
         {

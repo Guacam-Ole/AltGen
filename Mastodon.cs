@@ -9,6 +9,7 @@ namespace AltGen
     public class Mastodon
     {
         private readonly Secrets _secrets;
+        private string? _lastImageChecked = null;
 
         public Mastodon(Secrets secrets)
         {
@@ -40,6 +41,11 @@ namespace AltGen
             }
             catch (Exception e)
             {
+                if (e.ToString().Contains("Too many requests"))
+                {
+                    Console.WriteLine("Too many requests. will wait 10 minutes ");
+                    Thread.Sleep(TimeSpan.FromMinutes(10));
+                }
                 Console.WriteLine(e);
                 Console.WriteLine("will try again later");
                 throw;
@@ -75,8 +81,15 @@ namespace AltGen
             var newAttachments = new List<Attachment>();
             foreach (var attachment in status.MediaAttachments)
             {
+                if (_lastImageChecked != null && _lastImageChecked == attachment.Id)
+                {
+                    Console.WriteLine($"Image '{attachment.Url}' with id '{attachment.Id}' already checked. Will ignore it");
+                    continue;
+                }
+
+                _lastImageChecked = attachment.Id;
                 var imageDescription = attachment.Description;
-                string imageFile = attachment.Url;
+                var imageFile = attachment.Url;
                 if (!supportedExtensions.Any(q => attachment.Url.EndsWith(q)))
                 {
                     Console.WriteLine($"'{attachment.Url}' does not end with an expected imagetype. Will try with preview Image instead");
