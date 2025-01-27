@@ -27,7 +27,7 @@ internal class Program
                 Console.WriteLine($"ErrorCount: {errorCount}");
                 if (ex.ToString().Contains("Too many requests"))
                 {
-                    Console.WriteLine($"Too many requests. will wait{10 * errorCount} minutes ");
+                    Console.WriteLine($"Too many requests. will wait {10 * errorCount} minutes ");
                     Thread.Sleep(TimeSpan.FromMinutes(10 * errorCount));
                 }
                 else
