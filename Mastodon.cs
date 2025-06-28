@@ -115,6 +115,9 @@ namespace AltGen
             {
                 status.Content = StripHtml(status.Content);
                 var content = FixMentions(status);
+                Console.WriteLine($"New Content ({content.Length}):'{content}'");
+                if (content.Length > 500) content = content[..500];
+                
 
                 await client.EditStatus(status.Id, content, mediaIds: newAttachments.Select(q => q.Id));
             }
