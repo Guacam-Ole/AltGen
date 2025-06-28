@@ -8,6 +8,7 @@ namespace AltGen
     public class OpenAIAltGen
     {
         private readonly string _openAiKey;
+        private const int MaxLength = 500;
 
         public OpenAIAltGen(string openAiKey)
         {
@@ -24,7 +25,7 @@ namespace AltGen
             var descriptionResult = await service.ChatCompletion.CreateCompletion(new ChatCompletionCreateRequest
             {
                 Messages = new List<ChatMessage> {
-                    ChatMessage.FromSystem("You are an image analyzer assistant that speaks German. Never use more than 1000 Characters for your reply"),
+                    ChatMessage.FromSystem($"You are an image analyzer assistant that speaks German. Never use more than {MaxLength} Characters for your reply"),
                     ChatMessage.FromUser(new List<MessageContent>
                     {
                         MessageContent.TextContent("Was ist in dem Bild?"),
@@ -40,6 +41,7 @@ namespace AltGen
             {
                 var content = descriptionResult.Choices.First().Message.Content;
                 var cost = descriptionResult.Usage.TotalTokens;
+                if (content?.Length > MaxLength) content = content[..MaxLength];
                 Console.WriteLine($"{cost}:{content}");
                 return content;
             }
