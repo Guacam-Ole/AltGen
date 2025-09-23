@@ -133,7 +133,7 @@ namespace AltGen
             {
                 status.Content = StripHtml(status.Content);
                 var content = FixMentions(status);
-                _logger.LogInformation("New Content with lenth '{Length}:'{Content}'", content.Length, content);
+                _logger.LogInformation("New Content with length '{Length}':'{Content}'", content.Length, content);
                 if (content.Length > 500) content = content[..500];
                 await client.EditStatus(status.Id, content, mediaIds: newAttachments.Select(q => q.Id));
             }
