@@ -14,7 +14,7 @@ namespace AltGen
         private readonly ILogger<Mastodon> _logger;
         private string? _lastImageChecked = null;
 
-        public Mastodon(Secrets secrets, OpenAiAltGen altGen,  ILogger<Mastodon> logger)
+        public Mastodon(Secrets secrets, OpenAiAltGen altGen, ILogger<Mastodon> logger)
         {
             _secrets = secrets;
             _altGen = altGen;
@@ -32,21 +32,29 @@ namespace AltGen
             {
                 var client = Login(_secrets.Mastodon.Instance, _secrets.Mastodon.AccessToken);
                 var whoami = await client.GetCurrentUser();
-                var newStatuses = await client.GetAccountStatuses(whoami.Id, new ArrayOptions { SinceId = sinceId, Limit = 10 }, true);
+                var newStatuses = await client.GetAccountStatuses(whoami.Id,
+                    new ArrayOptions { SinceId = sinceId, Limit = 10 }, true);
                 foreach (var status in newStatuses.OrderBy(q => q.CreatedAt))
                 {
                     sinceId = status.Id;
                     var missingAltTags = status.MediaAttachments.Where(q => string.IsNullOrWhiteSpace(q.Description));
                     if (!missingAltTags.Any()) continue;
-                    _logger.LogDebug("Received Status without ALT. Try to add ALT-Tag.Contents: {Content}", status.Content);
-                    await FixAltTags(client, status);
+                    _logger.LogDebug("Received Status without ALT. Try to add ALT-Tag.Contents: {Content}",
+                        status.Content);
+
+                    for (int i = 0; i < 10; i++)
+                    {
+                        var success = await FixAltTags(client, status);
+                        if (success) break;
+                        Thread.Sleep(TimeSpan.FromSeconds(10));
+                    }
                 }
 
                 return sinceId;
             }
             catch (Exception ex)
             {
-               _logger.LogError(ex, "Error when trying to receive new Posts. Will try again later");
+                _logger.LogError(ex, "Error when trying to receive new Posts. Will try again later");
                 throw;
             }
         }
@@ -71,18 +79,19 @@ namespace AltGen
             return status.Content;
         }
 
-        private async Task FixAltTags(MastodonClient client, Status status)
+        private async Task<bool> FixAltTags(MastodonClient client, Status status)
         {
             string[] supportedExtensions = [".jpeg", ".jpg", ".png", ".ping"];
-            bool hasChanges = false;
-            
+            var hasChanges = false;
+
 
             var newAttachments = new List<Attachment>();
             foreach (var attachment in status.MediaAttachments)
             {
                 if (_lastImageChecked != null && _lastImageChecked == attachment.Id)
                 {
-                    _logger.LogDebug("Image '{Url}' with id '{Id}' already checked. Will ignore it", attachment.Url, attachment.Id);
+                    _logger.LogDebug("Image '{Url}' with id '{Id}' already checked. Will ignore it", attachment.Url,
+                        attachment.Id);
                     continue;
                 }
 
@@ -91,29 +100,32 @@ namespace AltGen
                 var imageFile = attachment.Url;
                 if (!supportedExtensions.Any(q => attachment.Url.EndsWith(q)))
                 {
-                    _logger.LogWarning("'{Url}' does not end with an expected extension. Will try with preview Image instead", attachment.Url);
+                    _logger.LogWarning(
+                        "'{Url}' does not end with an expected extension. Will try with preview Image instead",
+                        attachment.Url);
                     imageFile = attachment.PreviewUrl;
                 }
-         
-                if (string.IsNullOrWhiteSpace(imageDescription)) imageDescription = await _altGen.GetImageDescription(imageFile);
+
+                if (string.IsNullOrWhiteSpace(imageDescription))
+                    imageDescription = await _altGen.GetImageDescription(imageFile);
                 if (imageDescription == null)
                 {
                     _logger.LogWarning("Sorry. Cannot create description");
-                    return;
+                    return false;
                 }
 
                 using (var httpClient = new HttpClient())
                 {
                     var response = await httpClient.GetAsync(attachment.Url);
                     response.EnsureSuccessStatusCode();
-    
+
                     var content = await response.Content.ReadAsByteArrayAsync();
 
                     using var stream = new MemoryStream(content);
                     newAttachments.Add(await client.UploadMedia(stream, description: imageDescription));
                     await Task.Delay(TimeSpan.FromSeconds(10));
                 }
-              
+
                 hasChanges = true;
             }
 
@@ -123,10 +135,10 @@ namespace AltGen
                 var content = FixMentions(status);
                 _logger.LogInformation("New Content with lenth '{Length}:'{Content}'", content.Length, content);
                 if (content.Length > 500) content = content[..500];
-                
-
                 await client.EditStatus(status.Id, content, mediaIds: newAttachments.Select(q => q.Id));
             }
+
+            return true;
         }
     }
 }

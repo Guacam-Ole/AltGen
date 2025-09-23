@@ -14,9 +14,9 @@ internal class Program
     private static void Main(string[] args)
     {
         var serviceProvider = CreateServiceProvider();
-        var mastodon = serviceProvider.GetRequiredService<Mastodon>();
+        var looper = serviceProvider.GetRequiredService<Looper>();
+        looper.Loop().Wait();
 
-       
     }
 
     private static IServiceProvider CreateServiceProvider()
@@ -27,6 +27,7 @@ internal class Program
             throw new Exception("Cannot read config"));
         services.AddScoped<Mastodon>();
         services.AddScoped<OpenAiAltGen>();
+        services.AddScoped<Looper>();
         
         services.AddLogging(cfg => cfg.SetMinimumLevel(LogLevel.Debug));
         services.AddSerilog(cfg =>
