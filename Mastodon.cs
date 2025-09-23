@@ -3,20 +3,25 @@ using Mastonet;
 using Mastonet.Entities;
 using System.Net;
 using System.Text.RegularExpressions;
+using Microsoft.Extensions.Logging;
 
 namespace AltGen
 {
     public class Mastodon
     {
         private readonly Secrets _secrets;
+        private readonly OpenAiAltGen _altGen;
+        private readonly ILogger<Mastodon> _logger;
         private string? _lastImageChecked = null;
 
-        public Mastodon(Secrets secrets)
+        public Mastodon(Secrets secrets, OpenAiAltGen altGen,  ILogger<Mastodon> logger)
         {
             _secrets = secrets;
+            _altGen = altGen;
+            _logger = logger;
         }
 
-        public static MastodonClient Login(string instance, string accessToken)
+        private static MastodonClient Login(string instance, string accessToken)
         {
             return new MastodonClient(instance, accessToken);
         }
@@ -33,18 +38,15 @@ namespace AltGen
                     sinceId = status.Id;
                     var missingAltTags = status.MediaAttachments.Where(q => string.IsNullOrWhiteSpace(q.Description));
                     if (!missingAltTags.Any()) continue;
-                    await Console.Out.WriteLineAsync($"Received Status without ALT. try to add ALT-Tag.Contents: \n{status.Content}");
+                    _logger.LogDebug("Received Status without ALT. Try to add ALT-Tag.Contents: {Content}", status.Content);
                     await FixAltTags(client, status);
                 }
 
                 return sinceId;
             }
-            catch (Exception e)
+            catch (Exception ex)
             {
-               
-                Console.WriteLine(e);
-                Console.WriteLine("will try again later");
-               
+               _logger.LogError(ex, "Error when trying to receive new Posts. Will try again later");
                 throw;
             }
         }
@@ -73,14 +75,14 @@ namespace AltGen
         {
             string[] supportedExtensions = [".jpeg", ".jpg", ".png", ".ping"];
             bool hasChanges = false;
-            var aiGen = new OpenAIAltGen(_secrets.OpenAiKey);
+            
 
             var newAttachments = new List<Attachment>();
             foreach (var attachment in status.MediaAttachments)
             {
                 if (_lastImageChecked != null && _lastImageChecked == attachment.Id)
                 {
-                    Console.WriteLine($"Image '{attachment.Url}' with id '{attachment.Id}' already checked. Will ignore it");
+                    _logger.LogDebug("Image '{Url}' with id '{Id}' already checked. Will ignore it", attachment.Url, attachment.Id);
                     continue;
                 }
 
@@ -89,25 +91,29 @@ namespace AltGen
                 var imageFile = attachment.Url;
                 if (!supportedExtensions.Any(q => attachment.Url.EndsWith(q)))
                 {
-                    Console.WriteLine($"'{attachment.Url}' does not end with an expected imagetype. Will try with preview Image instead");
+                    _logger.LogWarning("'{Url}' does not end with an expected extension. Will try with preview Image instead", attachment.Url);
                     imageFile = attachment.PreviewUrl;
                 }
          
-                if (string.IsNullOrWhiteSpace(imageDescription)) imageDescription = await aiGen.GetImageDescription(imageFile);
+                if (string.IsNullOrWhiteSpace(imageDescription)) imageDescription = await _altGen.GetImageDescription(imageFile);
                 if (imageDescription == null)
                 {
-                    Console.WriteLine("Sorry. Cannot create description");
+                    _logger.LogWarning("Sorry. Cannot create description");
                     return;
                 }
 
-                using (var webClient = new WebClient())
+                using (var httpClient = new HttpClient())
                 {
-                    var content = webClient.DownloadData(attachment.Url);
+                    var response = await httpClient.GetAsync(attachment.Url);
+                    response.EnsureSuccessStatusCode();
+    
+                    var content = await response.Content.ReadAsByteArrayAsync();
 
                     using var stream = new MemoryStream(content);
                     newAttachments.Add(await client.UploadMedia(stream, description: imageDescription));
-                    Thread.Sleep(TimeSpan.FromSeconds(10));
+                    await Task.Delay(TimeSpan.FromSeconds(10));
                 }
+              
                 hasChanges = true;
             }
 
@@ -115,7 +121,7 @@ namespace AltGen
             {
                 status.Content = StripHtml(status.Content);
                 var content = FixMentions(status);
-                Console.WriteLine($"New Content ({content.Length}):'{content}'");
+                _logger.LogInformation("New Content with lenth '{Length}:'{Content}'", content.Length, content);
                 if (content.Length > 500) content = content[..500];
                 
 

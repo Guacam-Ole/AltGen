@@ -1,31 +1,33 @@
-﻿using OpenAI;
+﻿using AltGen.Config;
+using Microsoft.Extensions.Logging;
+using OpenAI;
 using OpenAI.Managers;
 using OpenAI.ObjectModels;
 using OpenAI.ObjectModels.RequestModels;
 
 namespace AltGen
 {
-    public class OpenAIAltGen
+    public class OpenAiAltGen
     {
-        private readonly string _openAiKey;
         private const int MaxLength = 500;
+        private readonly Secrets _secrets;
+        private readonly ILogger<OpenAiAltGen> _logger;
 
-        public OpenAIAltGen(string openAiKey)
+        public OpenAiAltGen(Secrets secrets, ILogger<OpenAiAltGen> logger)
         {
-            _openAiKey = openAiKey;
+            _secrets = secrets;
+            _logger = logger;
         }
 
         public async Task<string?> GetImageDescription(string filePath)
         {
-            if (filePath.EndsWith(".mp4"))
-            {
-                
-            }
             var service = Login();
             var descriptionResult = await service.ChatCompletion.CreateCompletion(new ChatCompletionCreateRequest
             {
-                Messages = new List<ChatMessage> {
-                    ChatMessage.FromSystem($"You are an image analyzer assistant that speaks German. Never use more than {MaxLength} Characters for your reply"),
+                Messages = new List<ChatMessage>
+                {
+                    ChatMessage.FromSystem(
+                        $"You are an image analyzer assistant that speaks German. Never use more than {MaxLength} Characters for your reply"),
                     ChatMessage.FromUser(new List<MessageContent>
                     {
                         MessageContent.TextContent("Was ist in dem Bild?"),
@@ -42,18 +44,19 @@ namespace AltGen
                 var content = descriptionResult.Choices.First().Message.Content;
                 var cost = descriptionResult.Usage.TotalTokens;
                 if (content?.Length > MaxLength) content = content[..MaxLength];
-                Console.WriteLine($"{cost}:{content}");
+                _logger.LogDebug("Successfully received a description with '{Cost}' Tokens: {Content}", cost, content);
                 return content;
             }
-            Console.WriteLine($"Could not receive description: '{descriptionResult.Error.Message}'");
+
+            _logger.LogWarning("Could not receive description: '{Error}'", descriptionResult.Error?.Message);
             return null;
         }
 
         private OpenAIService Login()
         {
-            var openAiService = new OpenAIService(new OpenAiOptions()
+            var openAiService = new OpenAIService(new OpenAiOptions
             {
-                ApiKey = _openAiKey
+                ApiKey = _secrets.OpenAiKey
             });
             return openAiService;
         }
