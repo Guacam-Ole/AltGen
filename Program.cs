@@ -1,15 +1,16 @@
 ﻿using AltGen;
+using AltGen.Config;
+using Microsoft.Extensions.DependencyInjection;
+using Mastodon = AltGen.Mastodon;
 
 internal class Program
 {
     private static void Main(string[] args)
     {
-        var config =
-            Newtonsoft.Json.JsonConvert.DeserializeObject<AltGen.Config.Secrets>(File.ReadAllText("secrets.json")) ??
-            throw new Exception("Cannot read config");
+        var serviceProvider = CreateServiceProvider();
+        var mastodon = serviceProvider.GetRequiredService<Mastodon>();
 
         string? lastCheckedId = null;
-        var mastodon = new Mastodon(config);
         var errorCount = 0;
         Console.WriteLine("Application Started");
         while (true)
@@ -40,5 +41,16 @@ internal class Program
                 return;
             }
         }
+    }
+
+    private static IServiceProvider CreateServiceProvider()
+    {
+        var services = new ServiceCollection();
+        services.AddSingleton<Secrets>(
+            Newtonsoft.Json.JsonConvert.DeserializeObject<AltGen.Config.Secrets>(File.ReadAllText("secrets.json")) ??
+            throw new Exception("Cannot read config"));
+        services.AddScoped<Mastodon>();
+        services.AddScoped<OpenAIAltGen>();
+        return services.BuildServiceProvider();
     }
 }
